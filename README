@@ -2,6 +2,8 @@ This is a merge of the nice work for gr-osmocom blocks from :
 - Alex Csete OZ9AEC @csete  - for plutosdr  - https://github.com/csete
 - Lukas Teske PU2NVX @lukasteske - for Spyserver client - https://github.com/racerxdl
 
+Modified to work with GNU Radio 3.8
+
 Tested with GNUradio, GQRX and more.
 
 See general osmosdr instructions below.
@@ -15,8 +17,6 @@ and will be obviously soon out-dated.
 While primarily being developed for the OsmoSDR hardware, this block
 as well supports:
 
- * FUNcube Dongle through libgnuradio-fcd
- * FUNcube Dongle Pro+ through gr-fcdproplus
  * sysmocom OsmoSDR Devices through libosmosdr
  * RTL2832U based DVB-T dongles through librtlsdr
  * RTL-TCP spectrum server (see librtlsdr project)

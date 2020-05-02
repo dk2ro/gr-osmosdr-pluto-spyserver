@@ -112,7 +112,6 @@ public:
   double set_lna_gain( double gain, size_t chan = 0 );
   double set_mix_gain(double gain, size_t chan = 0 );
   double set_if_gain( double gain, size_t chan = 0 );
-  double set_bb_gain( double gain, size_t chan = 0 ) { return set_mix_gain(gain, chan); };
 
   std::vector< std::string > get_antennas( size_t chan = 0 );
   std::string set_antenna( const std::string & antenna, size_t chan = 0 );
@@ -121,9 +120,6 @@ public:
   double set_bandwidth( double bandwidth, size_t chan = 0 );
   double get_bandwidth( size_t chan = 0 );
   osmosdr::freq_range_t get_bandwidth_range( size_t chan = 0 );
-
-  void set_biast( bool enabled );
-  bool get_biast();
 
 private:
   static int _airspy_rx_callback(airspy_transfer* transfer);
@@ -151,7 +147,6 @@ private:
   double _mix_gain;
   double _vga_gain;
   double _bandwidth;
-  bool _biasT;
 };
 
 #endif /* INCLUDED_AIRSPY_SOURCE_C_H */

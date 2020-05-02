@@ -23,7 +23,7 @@
 #include <gnuradio/blocks/float_to_complex.h>
 #include <gnuradio/blocks/short_to_float.h>
 #include <gnuradio/hier_block2.h>
-#include <gnuradio/iio/pluto_source.h>
+#include <iio/pluto_source.h>
 
 #include "source_iface.h"
 

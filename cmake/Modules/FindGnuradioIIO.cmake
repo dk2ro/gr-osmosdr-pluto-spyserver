@@ -3,7 +3,7 @@ PKG_CHECK_MODULES(PC_GNURADIO_IIO gnuradio-iio)
 
 FIND_PATH(
     GNURADIO_IIO_INCLUDE_DIRS
-    NAMES gnuradio/iio/api.h
+    NAMES iio/api.h
     HINTS $ENV{GNURADIO_IIO_DIR}/include
         ${PC_GNURADIO_IIO_INCLUDEDIR}
     PATHS /usr/local/include

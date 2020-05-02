@@ -395,18 +395,6 @@ public:
    * \param time_spec the new time
    */
   virtual void set_time_unknown_pps(const ::osmosdr::time_spec_t &time_spec) { }
-
-  /*!
-   * Enabled the Bias T (Power Injection) for supported radios.
-   * \param enabled true for enabled
-   */
-  virtual void set_biast( bool enabled ) { std::cout << "NOT IMPLEMENTED BIAST(" << enabled << ")" << std::endl; }
-
-  /*!
-   * Gets the state of Bias T for supported radios.
-   */
-  virtual bool get_biast() { return false; }
-
 };
 
 #endif // OSMOSDR_SOURCE_IFACE_H

@@ -712,12 +712,3 @@ osmosdr::freq_range_t airspy_source_c::get_bandwidth_range( size_t chan )
 
   return bandwidths;
 }
-
-void airspy_source_c::set_biast( bool enabled ) {
-  airspy_set_rf_bias(_dev, enabled ? 1 : 0);
-  _biasT = enabled;
-}
-
-bool airspy_source_c::get_biast() {
-  return _biasT;
-}

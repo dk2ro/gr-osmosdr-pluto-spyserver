@@ -91,9 +91,6 @@ public:
   void set_time_next_pps(const ::osmosdr::time_spec_t &time_spec);
   void set_time_unknown_pps(const ::osmosdr::time_spec_t &time_spec);
 
-  void set_biast( bool enabled );
-  bool get_biast();
-
 private:
   std::vector< source_iface * > _devs;
 

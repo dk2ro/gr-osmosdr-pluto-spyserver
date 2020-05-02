@@ -20,11 +20,21 @@
 ########################################################################
 # Project setup
 ########################################################################
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.8)
 project(gr-osmosdr CXX C)
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
+#install to PyBOMBS target prefix if defined
+if(DEFINED ENV{PYBOMBS_PREFIX})
+    set(CMAKE_INSTALL_PREFIX $ENV{PYBOMBS_PREFIX})
+    message(STATUS "PyBOMBS installed GNU Radio. Setting CMAKE_INSTALL_PREFIX to $ENV{PYBOMBS_PREFIX}")
+endif()
+
+# Get GNU Radio Installation Prefix
+if(DEFINED CMAKE_INSTALL_PREFIX)
+    set(GR_PREFIX ${CMAKE_INSTALL_PREFIX})
+    message(STATUS "Installation is located at: ${GR_PREFIX}")
+endif()
 
 #select the release build type by default to get optimization flags
 if(NOT CMAKE_BUILD_TYPE)
@@ -33,6 +43,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
+#make sure our local CMake Modules path comes first
+list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake/Modules)
+
 set(ENABLE_NONFREE FALSE CACHE BOOL "Enable or disable nonfree components.")
 
 # Set the version information here
@@ -40,30 +53,30 @@ set(VERSION_INFO_MAJOR_VERSION 0)
 set(VERSION_INFO_API_COMPAT    1)
 set(VERSION_INFO_MINOR_VERSION 5)
 set(VERSION_INFO_MAINT_VERSION git)
-include(GrVersion) #setup version info
+
+cmake_policy(SET CMP0011 NEW)
+
 
 ########################################################################
 # Compiler specific setup
 ########################################################################
-
 IF(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|x86")
- SET(USE_SIMD "SSE2" CACHE STRING "Use SIMD instructions")
+    SET(USE_SIMD "SSE2" CACHE STRING "Use SIMD instructions")
 ELSE()
- SET(USE_SIMD "no" CACHE STRING "Use SIMD instructions")
+    SET(USE_SIMD "no" CACHE STRING "Use SIMD instructions")
 ENDIF()
- SET(USE_SIMD_VALUES "no" "SSE2" "AVX")
- SET_PROPERTY(CACHE USE_SIMD PROPERTY STRINGS ${USE_SIMD_VALUES})
- LIST(FIND USE_SIMD_VALUES ${USE_SIMD} USE_SIMD_INDEX)
- IF(${USE_SIMD_INDEX} EQUAL -1)
-   message(FATAL_ERROR "Option ${USE_SIMD} not supported, valid entries are ${USE_SIMD_VALUES}")
- ENDIF()
+SET(USE_SIMD_VALUES "no" "SSE2" "AVX")
+SET_PROPERTY(CACHE USE_SIMD PROPERTY STRINGS ${USE_SIMD_VALUES})
+LIST(FIND USE_SIMD_VALUES ${USE_SIMD} USE_SIMD_INDEX)
+IF(${USE_SIMD_INDEX} EQUAL -1)
+    message(FATAL_ERROR "Option ${USE_SIMD} not supported, valid entries are ${USE_SIMD_VALUES}")
+ENDIF()
 
 IF(CMAKE_CXX_COMPILER MATCHES ".*clang")
     SET(CMAKE_COMPILER_IS_CLANGXX 1)
 ENDIF()
 
 IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX)
-    ADD_DEFINITIONS(-std=c++11)
     ADD_DEFINITIONS(-Wall)
     ADD_DEFINITIONS(-Wextra)
     ADD_DEFINITIONS(-Wno-unused-parameter)
@@ -95,43 +108,25 @@ ELSEIF(MSVC)
     ENDIF()
 ENDIF()
 
-########################################################################
-# Setup boost
-########################################################################
-MESSAGE(STATUS "Configuring Boost C++ Libraries...")
-
-# Although not required on my system, some users have linking issues without
-SET(BOOST_REQUIRED_COMPONENTS
-    thread
-    system
-)
-
-if(UNIX AND NOT BOOST_ROOT AND EXISTS "/usr/lib64")
-    list(APPEND BOOST_LIBRARYDIR "/usr/lib64") #fedora 64-bit fix
-endif(UNIX AND NOT BOOST_ROOT AND EXISTS "/usr/lib64")
-
-set(Boost_ADDITIONAL_VERSIONS
-    "1.35.0" "1.35" "1.36.0" "1.36" "1.37.0" "1.37" "1.38.0" "1.38" "1.39.0" "1.39"
-    "1.40.0" "1.40" "1.41.0" "1.41" "1.42.0" "1.42" "1.43.0" "1.43" "1.44.0" "1.44"
-    "1.45.0" "1.45" "1.46.0" "1.46" "1.47.0" "1.47" "1.48.0" "1.48" "1.49.0" "1.49"
-    "1.50.0" "1.50" "1.51.0" "1.51" "1.52.0" "1.52" "1.53.0" "1.53" "1.54.0" "1.54"
-    "1.55.0" "1.55" "1.56.0" "1.56" "1.57.0" "1.57" "1.58.0" "1.58" "1.59.0" "1.59"
-    "1.60.0" "1.60" "1.61.0" "1.61" "1.62.0" "1.62" "1.63.0" "1.63" "1.64.0" "1.64"
-    "1.65.0" "1.65" "1.66.0" "1.66" "1.67.0" "1.67" "1.68.0" "1.68" "1.69.0" "1.69"
-)
-
-find_package(Boost COMPONENTS ${BOOST_REQUIRED_COMPONENTS})
-
-if(NOT Boost_FOUND)
-    message(FATAL_ERROR "Boost required to build " ${CMAKE_PROJECT_NAME})
-endif()
-
-ADD_DEFINITIONS(-DBOOST_ALL_DYN_LINK)
 
 ########################################################################
 # Install directories
 ########################################################################
+find_package(Gnuradio REQUIRED COMPONENTS blocks pmt) # Side effect of MODULE_PATH getting prepended with system components
+list(REVERSE CMAKE_MODULE_PATH)
+set(MIN_GR_VERSION "3.8")
+if("${Gnuradio_VERSION}" VERSION_LESS MIN_GR_VERSION)
+    MESSAGE(FATAL_ERROR "GnuRadio version required: >=\"" ${MIN_GR_VERSION} "\" found: \"" ${Gnuradio_VERSION} "\"")
+endif()
+
+include(GrVersion)
+
 include(GrPlatform) #define LIB_SUFFIX
+if(NOT CMAKE_MODULES_DIR)
+    set(CMAKE_MODULES_DIR lib${LIB_SUFFIX}/cmake)
+endif(NOT CMAKE_MODULES_DIR)
+
+set(GR_CMAKE_DIR        ${CMAKE_MODULES_DIR}/osmosdr)
 set(GR_RUNTIME_DIR      bin)
 set(GR_LIBRARY_DIR      lib${LIB_SUFFIX})
 set(GR_INCLUDE_DIR      include)
@@ -148,26 +143,69 @@ set(GR_PKG_LIBEXEC_DIR  ${GR_LIBEXEC_DIR}/${CMAKE_PROJECT_NAME})
 set(GRC_BLOCKS_DIR      ${GR_PKG_DATA_DIR}/grc/blocks)
 
 ########################################################################
+# On Apple only, set install name and use rpath correctly, if not already set
+########################################################################
+if(APPLE)
+    if(NOT CMAKE_INSTALL_NAME_DIR)
+        set(CMAKE_INSTALL_NAME_DIR
+            ${CMAKE_INSTALL_PREFIX}/${GR_LIBRARY_DIR} CACHE
+            PATH "Library Install Name Destination Directory" FORCE)
+    endif(NOT CMAKE_INSTALL_NAME_DIR)
+    if(NOT CMAKE_INSTALL_RPATH)
+        set(CMAKE_INSTALL_RPATH
+            ${CMAKE_INSTALL_PREFIX}/${GR_LIBRARY_DIR} CACHE
+            PATH "Library Install RPath" FORCE)
+    endif(NOT CMAKE_INSTALL_RPATH)
+    if(NOT CMAKE_BUILD_WITH_INSTALL_RPATH)
+        set(CMAKE_BUILD_WITH_INSTALL_RPATH ON CACHE
+            BOOL "Do Build Using Library Install RPath" FORCE)
+    endif(NOT CMAKE_BUILD_WITH_INSTALL_RPATH)
+endif(APPLE)
+
+########################################################################
 # Find build dependencies
 ########################################################################
-set(GR_REQUIRED_COMPONENTS RUNTIME PMT BLOCKS)
-set(MIN_GR_VERSION "3.7.8")
-find_package(Gnuradio REQUIRED)
-if("${Gnuradio_VERSION}" VERSION_LESS MIN_GR_VERSION)
-    MESSAGE(FATAL_ERROR "GnuRadio version required: >=\"" ${MIN_GR_VERSION} "\" found: \"" ${Gnuradio_VERSION} "\"")
-endif()
+set(GR_REQUIRED_COMPONENTS RUNTIME PMT blocks)
+
+find_package(gnuradio-blocks PATHS ${GR_PREFIX}/lib/cmake/gnuradio/)
+message(STATUS "Found Block Block: ${gnuradio-blocks_FOUND}")
+
+#[[find_package(gnuradio-pmt PATHS ${GR_PREFIX}/lib/cmake/gnuradio/)
+message(STATUS "Found PMT Block: ${gnuradio-pmt_FOUND}")
+
+find_package(gnuradio-runtime PATHS ${GR_PREFIX}/lib/cmake/gnuradio/)
+message(STATUS "Found Runtime Block: ${gnuradio-runtime_FOUND}")
+
+# Software Components part of GNU Radio - These should all be present for a default install
+message(STATUS " Searching for IQ Balance...")
+#find_package(Gnuradio COMPONENTS iqbalance REQUIRED)
+find_package(gnuradio-iqbalance PATHS ${GR_PREFIX}/lib/cmake/iqbalance)
+message (STATUS "Found IQ Balance: ${gnuradio-iqbalance_FOUND}")
+
+message(STATUS " Searching for UHD Drivers...")
+#find_package(Gnuradio COMPONENTS uhd REQUIRED)
+find_package(UHD REQUIRED ${GR_PREFIX}/lib/cmake/uhd)
+message (STATUS "Found UHD Driver: ${UHD_FOUND}")
+
+message(STATUS " Searching for UHD Block...")
+#find_package(Gnuradio COMPONENTS gnuradio-uhd REQUIRED)
+find_package(gnuradio-uhd PATHS ${GR_PREFIX}/lib/cmake/gnuradio/)
+message (STATUS "Found UHD Block: ${gnuradio-uhd_FOUND}")
+
+message(STATUS " Searching for Volk...")
+#find_package(Gnuradio COMPONENTS Volk REQUIRED)
+find_package(volk PATHS ${GR_PREFIX}/lib/cmake/volk)
+message (STATUS "Found Volk: ${volk_FOUND}") ]]#
 
 find_package(GnuradioIQBalance)
 find_package(UHD)
 find_package(GnuradioUHD)
 find_package(GnuradioIIO)
-find_package(GnuradioFCD)
-find_package(GnuradioFCDPP)
 find_package(LibOsmoSDR)
 find_package(LibRTLSDR)
 find_package(LibMiriSDR)
 if(ENABLE_NONFREE)
-find_package(LibSDRplay)
+    find_package(LibSDRplay)
 endif(ENABLE_NONFREE)
 find_package(LibHackRF)
 find_package(LibAIRSPY)
@@ -177,24 +215,35 @@ find_package(SoapySDR NO_MODULE)
 find_package(LibFreeSRP)
 find_package(Doxygen)
 
+#get_cmake_property(_variableNames VARIABLES)
+#list (SORT _variableNames)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()
 
-if(NOT GNURADIO_RUNTIME_FOUND)
-    message(FATAL_ERROR "GnuRadio Runtime required to build " ${CMAKE_PROJECT_NAME})
-endif()
+
+########################################################################
+# Setup doxygen option
+########################################################################
+if(DOXYGEN_FOUND)
+    option(ENABLE_DOXYGEN "Build docs using Doxygen" ON)
+else(DOXYGEN_FOUND)
+    option(ENABLE_DOXYGEN "Build docs using Doxygen" OFF)
+endif(DOXYGEN_FOUND)
 
 ########################################################################
 # Setup the include and linker paths
 ########################################################################
 include_directories(
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/lib
-    ${Boost_INCLUDE_DIRS}
-    ${GNURADIO_ALL_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib
+        ${Boost_INCLUDE_DIRS}
+        ${GNURADIO_ALL_INCLUDE_DIRS}
 )
 
 link_directories(
-    ${Boost_LIBRARY_DIRS}
-    ${GNURADIO_ALL_LIBRARY_DIRS}
+        ${Boost_LIBRARY_DIRS}
+        ${GNURADIO_ALL_LIBRARY_DIRS}
 )
 
 # Set component parameters
@@ -211,12 +260,13 @@ configure_file(
 
 add_custom_target(uninstall
     ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
-)
+    )
+
 
 ########################################################################
 # Enable python component
 ########################################################################
-find_package(PythonLibs 2)
+find_package(PythonLibs)
 find_package(SWIG)
 
 if(SWIG_FOUND)
@@ -229,10 +279,11 @@ endif(SWIG_FOUND)
 
 include(GrComponent)
 GR_REGISTER_COMPONENT("Python support" ENABLE_PYTHON
-    PYTHONLIBS_FOUND
-    SWIG_FOUND
-    SWIG_VERSION_CHECK
-)
+        PYTHONLIBS_FOUND
+        SWIG_FOUND
+        SWIG_VERSION_CHECK
+        )
+
 
 ########################################################################
 # Add subdirectories
@@ -246,6 +297,14 @@ if(ENABLE_PYTHON)
     add_subdirectory(apps)
 endif(ENABLE_PYTHON)
 add_subdirectory(docs)
+
+########################################################################
+# Install cmake search helper for this library
+########################################################################
+
+install(FILES cmake/Modules/osmosdrConfig.cmake
+    DESTINATION ${CMAKE_MODULES_DIR}/osmosdr
+)
 
 ########################################################################
 # Create Pkg Config File
@@ -275,13 +334,13 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "GNU Radio block for various radio hardwar
 set(CPACK_PACKAGE_VERSION ${VERSION})
 
 CONFIGURE_FILE(
-    ${CMAKE_CURRENT_SOURCE_DIR}/gnuradio-osmosdr.pc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/gnuradio-osmosdr.pc
-@ONLY)
+        ${CMAKE_CURRENT_SOURCE_DIR}/gnuradio-osmosdr.pc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/gnuradio-osmosdr.pc
+        @ONLY)
 
 INSTALL(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/gnuradio-osmosdr.pc
-    DESTINATION ${GR_LIBRARY_DIR}/pkgconfig
+        FILES ${CMAKE_CURRENT_BINARY_DIR}/gnuradio-osmosdr.pc
+        DESTINATION ${GR_LIBRARY_DIR}/pkgconfig
 )
 
 ########################################################################
@@ -289,11 +348,11 @@ INSTALL(
 ########################################################################
 GR_PRINT_COMPONENT_SUMMARY()
 if(ENABLE_NONFREE)
-MESSAGE(STATUS
-  "NONFREE components have been enabled. The resulting
+    MESSAGE(STATUS
+            "NONFREE components have been enabled. The resulting
    binaries cannot be distributed under GPL terms.
   "
-)
+            )
 endif(ENABLE_NONFREE)
 
 MESSAGE(STATUS "Building for version: ${VERSION} / ${LIBVER}")

@@ -109,8 +109,6 @@ hackrf_source_c::hackrf_source_c (const std::string &args)
 
   _buf_num = _buf_len = _buf_head = _buf_used = _buf_offset = 0;
 
-  _biasT = false;
-
   if (dict.count("buffers"))
     _buf_num = boost::lexical_cast< unsigned int >( dict["buffers"] );
 
@@ -774,13 +772,4 @@ osmosdr::freq_range_t hackrf_source_c::get_bandwidth_range( size_t chan )
   bandwidths += osmosdr::range_t( 28000000 );
 
   return bandwidths;
-}
-
-void hackrf_source_c::set_biast( bool enabled ) {
-  hackrf_set_antenna_enable(_dev, enabled ? 1 : 0);
-  _biasT = enabled;
-}
-
-bool hackrf_source_c::get_biast() {
-  return _biasT;
 }

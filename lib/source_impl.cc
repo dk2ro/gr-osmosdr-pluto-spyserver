@@ -103,10 +103,6 @@
 #include "arg_helpers.h"
 #include "source_impl.h"
 
-/* This avoids throws in ctor of gr::hier_block2, as gnuradio is unable to deal
- with this behavior in a clean way. The GR maintainer Rondeau has been informed. */
-#define WORKAROUND_GR_HIER_BLOCK2_BUG
-
 /*
  * Create a new instance of source_impl and return
  * a boost shared_ptr.  This is effectively the public constructor.
@@ -190,7 +186,7 @@ source_impl::source_impl( const std::string &args )
   std::cerr << "built-in source types: ";
   BOOST_FOREACH(std::string dev_type, dev_types)
     std::cerr << dev_type << " ";
-  std::cerr << std::endl << std::flush;
+  std::cerr << std::endl;
 
 #ifdef ENABLE_RFSPACE
   dev_types.push_back("sdr-iq"); /* additional aliases for rfspace backend */
@@ -208,9 +204,7 @@ source_impl::source_impl( const std::string &args )
       }
     }
   }
-#ifdef WORKAROUND_GR_HIER_BLOCK2_BUG
-  try {
-#endif
+
   if ( ! device_specified ) {
     std::vector< std::string > dev_list;
 #ifdef ENABLE_OSMOSDR
@@ -281,7 +275,7 @@ source_impl::source_impl( const std::string &args )
     if ( dev_list.size() )
       arg_list.push_back( dev_list.front() );
     else
-      throw std::runtime_error("No supported devices found to pick from.");
+      throw std::runtime_error("No supported devices found (check the connection and/or udev rules).");
   }
 
   BOOST_FOREACH(std::string arg, arg_list) {
@@ -445,35 +439,6 @@ source_impl::source_impl( const std::string &args )
 
   if (!_devs.size())
     throw std::runtime_error("No devices specified via device arguments.");
-#ifdef WORKAROUND_GR_HIER_BLOCK2_BUG
-  } catch ( std::exception &ex ) {
-    std::cerr << std::endl << "FATAL: " << ex.what() << std::endl << std::endl;
-
-    /* we try to prevent the whole application from crashing by faking
-     * the missing hardware (channels) with null sourc(e) */
-
-    gr::blocks::null_source::sptr null_source = \
-        gr::blocks::null_source::make( sizeof(gr_complex) );
-
-    gr::blocks::throttle::sptr throttle = \
-        gr::blocks::throttle::make( sizeof(gr_complex), 1e5 );
-
-    connect(null_source, 0, throttle, 0);
-
-    size_t missing_chans = 0;
-    if ( output_signature()->max_streams() > 0 )
-      missing_chans = output_signature()->max_streams() - channel;
-
-    std::cerr << "Trying to fill up " << missing_chans
-              << " missing channel(s) with null source(s).\n"
-              << "This is being done to prevent the application from crashing\n"
-              << "due to gnuradio bug #528.\n"
-              << std::endl;
-
-    for (size_t i = 0; i < missing_chans; i++)
-      connect(throttle, 0, self(), channel++);
-  }
-#endif
 }
 
 size_t source_impl::get_num_channels()
@@ -1019,22 +984,4 @@ void source_impl::set_time_unknown_pps(const osmosdr::time_spec_t &time_spec)
   {
     dev->set_time_unknown_pps( time_spec );
   }
-}
-
-
-void source_impl::set_biast( bool enabled ) {
-  BOOST_FOREACH( source_iface *dev, _devs )
-  {
-    dev->set_biast(enabled);
-  }
-}
-
-bool source_impl::get_biast() {
-  BOOST_FOREACH( source_iface *dev, _devs )
-  {
-    if (dev->get_biast()) {
-      return true;
-    }
-  }
-  return false;
 }
